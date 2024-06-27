@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="追光者w,有梦想的咸鱼,一棵树站在原野上,Slience">
+     <link rel="shortcut icon" href="../static/images/loge.jpg">
+    <title>基于知识图谱的医疗可视化及问答系统</title>
+    <link rel="stylesheet" type="text/css" href="../static/js/main.css"/>
+    <style>
+        body {
+            background-image: url('../static/images/bg7.jpg');
+            background-repeat: repeat;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+
+<body>
+<div class="vi">
+    <div class="sidebar">
+        <div class="header">
+            <h1 style="font-size: 52px;">基于知识图谱的医疗可视化及问答系统</h1>
+            <div class="quote">
+                <p class="quote-text animate-init" style="font-size: 18px;">
+                    <span class="animate-init">Good,</span>
+                    <span class="animate-init"> better,</span>
+                    <span class="animate-init">best.</span>
+                    <span class="animate-init"> Never let it rest.</span>
+                </p>
+            </div>
+        </div>
+        <div class="menu">
+            <p><a href="/view" class="animate-init" rel="noopener noreferrer" style="font-size: 30px;">可视化界面</a></p>
+            <p><a href="/question" class="animate-init" rel="external nofollow noopener noreferrer" style="font-size: 30px;">智能问答系统</a></p>
+        </div>
+        <div class="location">
+            <i class="location-icon"></i>
+            <span class="location-text animate-init" style="font-size: 18px;">Jiang Nan University</span>
+        </div>
+        <div class="relocating">
+            Navigating to: <span class="relocate-location"></span>...
+        </div>
+    </div>
+
+    <div class="content">
+        <span class="close">close</span>
+    </div>
+</div>
+<canvas width="1920" height="949"></canvas>
+<script type="text/javascript" src="../static/js/index.js"></script>
+<script>
+    $(document).ready(function () {
+        var delay = 1;
+        var DELAY_STEP = 200;
+        var animationOptions = { opacity: 1, top: 0};
+
+        $('h1').animate(animationOptions).promise()
+            .pipe(animateMain)
+            .pipe(animateLocationIcon);
+
+        function animateMain() {
+            var dfd = $.Deferred();
+            var els = $('.animate-init');
+            var size = els.size();
+
+            els.each(function (index, el) {
+                delay++;
+                $(el).delay(index * DELAY_STEP)
+                    .animate(animationOptions);
+                (size - 1 === index) && dfd.resolve();
+            });
+            return dfd.promise();
+        }
+
+        function animateLocationIcon() {
+            $('.location-icon').delay(delay * DELAY_STEP).animate({
+                opacity: 1,
+                top: 0
+            }).promise().done(animationQuote);
+        }
+
+        function animationQuote() {}
+    });
+
+    document.addEventListener('touchmove', function (e) {
+        e.preventDefault()
+    })
+    var c = document.getElementsByTagName('canvas')[0],
+        x = c.getContext('2d'),
+        pr = window.devicePixelRatio || 1,
+        w = window.innerWidth,
+        h = window.innerHeight,
+        f = 90,
+        q,
+        m = Math,
+        r = 0,
+        u = m.PI*2,
+        v = m.cos,
+        z = m.random
+    c.width = w*pr
+    c.height = h*pr
+    x.scale(pr, pr)
+    x.globalAlpha = 0.6
+    function i(){
+        x.clearRect(0,0,w,h)
+        q=[{x:0,y:h*.7+f},{x:0,y:h*.7-f}]
+        while(q[1].x<w+f) d(q[0], q[1])
+    }
+    function d(i,j){
+        x.beginPath()
+        x.moveTo(i.x, i.y)
+        x.lineTo(j.x, j.y)
+        var k = j.x + (z()*2-0.25)*f,
+            n = y(j.y)
+        x.lineTo(k, n)
+        x.closePath()
+        r-=u/-50
+        x.fillStyle = '#'+(v(r)*127+128<<16 | v(r+u/3)*127+128<<8 | v(r+u/3*2)*127+128).toString(16)
+        x.fill()
+        q[0] = q[1]
+        q[1] = {x:k,y:n}
+    }
+    function y(p){
+        var t = p + (z()*2-1.1)*f
+        return (t>h||t<0) ? y(p) : t
+    }
+    document.onclick = i
+    document.ontouchstart = i
+    i()
+</script>
+ <footer id="footer"style="position: fixed; bottom: 0; left: 0;">
+           <p class="pad-lft">Copyright&#0169; 2024 黄致文  &nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;All Rights Reserved </p>
+        </footer>
+</body>
+</html>

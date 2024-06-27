@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="../static/images/loge.jpg">
+    <title>知识图谱可视化界面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-image: url('../static/images/bg4.jpg'); /* New background image */
+            background-size: cover;
+        }
+         /* 样式修改以将信息显示在右上角，并置于底层 */
+        .info {
+            position: fixed;  /* 固定位置 */
+            top: 10px;  /* 距离页面顶部10px */
+            right: 300px;  /* 距离页面右侧20px */
+            background: rgba(255, 255, 255, 0.8);  /* 半透明白色背景 */
+            padding: 10px;  /* 内边距 */
+            border: 1px solid #ddd;  /* 边框 */
+            border-radius: 5px;  /* 边角圆滑 */
+            z-index: 1;  /* 低层级，确保其他内容在其上 */
+            font-size: 14px;  /* 字体大小 */
+        }
+        /* CSS样式 */
+        /* 原有样式保持不变 */
+        /* 添加导航栏样式 */
+        .navbar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 200px;
+            height: 100%;
+            background-color: #f8f9fa;
+            border-left: 1px solid #ddd;
+            padding: 20px;
+        }
+
+        .navbar ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .navbar li {
+            margin-bottom: 10px;
+        }
+
+        .navbar a {
+            text-decoration: none;
+            color: #333;
+            font-weight: bold;
+            font-size: 16px;
+            transition: color 0.3s;
+        }
+
+        .navbar a:hover {
+            color: #007bff;
+        }
+
+        /* 修改关系边中内容的字体颜色 */
+        text {
+            fill: yellow;
+        }
+
+        /* 弹窗样式 */
+        .popup {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .popup-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+            animation-name: animatetop;
+            animation-duration: 0.4s;
+        }
+
+        @keyframes animatetop {
+            from {
+                top: -300px;
+                opacity: 0
+            }
+
+            to {
+                top: 0;
+                opacity: 1
+            }
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+
+</head>
+
+<body>
+  <!-- 显示节点和关系边数量的区域 -->
+    <div class="info">
+        节点数量: <span id="nodeCount">0</span><br>
+        关系边数量: <span id="edgeCount">0</span>
+    </div>
+    <!-- 导航栏 -->
+    <div class="navbar">
+        <ul>
+            <li><a href="#" onclick="showPopup('overview')">概述</a></li>
+            <li><a href="#" onclick="showPopup('features')">特点</a></li>
+            <li><a href="#" onclick="showPopup('usage')">使用方法</a></li>
+            <li><a href="#" onclick="showPopup('contact')">联系我们</a></li>
+            <li><a href="http://localhost:7474/browser/">登录数据库</a></li>
+            <li><a href="http://127.0.0.1:5000/question">智能问答系统</a></li>
+            <li><a href="http://127.0.0.1:5000/">返回主页</a></li>
+        </ul>
+    </div>
+
+    <!-- 搜索框 -->
+    <div class="search-form">
+        <form action="/view" method="GET">
+            <label for="search_term"style="color: red;">输入疾病搜索词：</label>
+            <input type="text" id="search_term" name="search_term" required>
+            <button type="submit">搜索</button>
+        </form>
+    </div>
+
+    <!-- 按钮组 -->
+    <div class="button-group">
+        <button onclick="toggleRelationship('acompany_with')">acompany_with</button>
+        <button onclick="toggleRelationship('belongs_to')">belongs_to</button>
+        <button onclick="toggleRelationship('common_drug')">common_drug</button>
+        <button onclick="toggleRelationship('do_eat')">do_eat</button>
+        <button onclick="toggleRelationship('drugs_of')">drugs_of</button>
+        <button onclick="toggleRelationship('has_symptom')">has_symptom</button>
+        <button onclick="toggleRelationship('need_check')">need_check</button>
+        <button onclick="toggleRelationship('no_eat')">no_eat</button>
+        <button onclick="toggleRelationship('recommand_drug')">recommand_drug</button>
+        <button onclick="toggleRelationship('recommand_eat')">recommand_eat</button>
+        <button onclick="toggleAll()">show_all</button>
+    </div>
+
+    <!-- SVG容器 -->
+    <svg id="graph" width="2200" height="1000"></svg>
+
+    <!-- 弹窗内容 -->
+    <div id="overview" class="popup">
+        <div class="popup-content">
+            <span class="close" onclick="closePopup('overview')">&times;</span>
+            <p>基于知识图谱的可视化网页界面为用户提供了一个交互式的平台，以直观的方式探索和理解疾病之间的关系、症状、治疗方法等医学知识，
+                即用户无需具备专业知识就能够对各种疾病之间的关系、症状、治疗方法等医学知识一目了然 。</p>
+        </div>
+    </div>
+
+    <div id="features" class="popup">
+        <div class="popup-content">
+            <span class="close" onclick="closePopup('features')">&times;</span>
+            <p><strong>基于HTML和SVG：</strong><br>
+                界面使用HTML和SVG技术构建，使得图谱能够在网页上动态展示，用户可以直观地查看和探索知识图谱。</p>
+
+            <p><strong>导航栏功能：</strong><br>提供了简洁的导航栏，包括概述、特点、使用方法和联系我们等选项，方便用户了解和使用该知识图谱可视化界面。</p>
+
+            <p><strong>搜索功能：</strong><br>用户可以在搜索框中输入疾病搜索词，然后点击搜索按钮，以查找与该疾病相关的知识图谱信息。</p>
+
+            <p><strong>按钮组操作：</strong><br>提供了按钮组，用户可以通过点击按钮来切换显示不同类型的关系边，以便更清晰地理解知识图谱中的信息。</p>
+
+            <p><strong>弹窗功能：</strong><br>通过弹窗功能，用户可以查看概述、特点、使用方法和联系我们等详细信息，提供了更多的便利和交互性。</p>
+
+            <p><strong>动态交互：</strong><br>图谱中的节点和关系边具有动态交互效果，用户可以点击节点或关系边，以查看相关信息或进行操作。</p>
+
+            <p><strong>美观易用：</strong><br>界面设计简洁美观，操作简单易用，用户可以轻松地浏览和探索知识图谱中的信息。</p>
+
+        </div>
+    </div>
+
+    <div id="usage" class="popup">
+        <div class="popup-content">
+            <span class="close" onclick="closePopup('usage')">&times;</span>
+            <p>在疾病搜索框输入需要查找的疾病关键字，网页便会显示相应的知识图谱，通过点击搜索框下的关系按钮，知识图谱中将会显示或隐藏对应的更新边。
+                可对知识图谱中每个节点进行拖拽互动。</p>
+        </div>
+    </div>
+
+    <div id="contact" class="popup">
+        <div class="popup-content">
+            <span class="close" onclick="closePopup('contact')">&times;</span>
+            <p>联系邮箱：1793647848@qq.com</p>
+        </div>
+    </div>
+
+    <!-- 引入D3.js库 -->
+    <script src="https://d3js.org/d3.v3.min.js"></script>
+    <script>
+            var relationshipMap = {
+        'acompany_with': '伴随',
+        'belongs_to': '属于',
+        'common_drug': '常用药物',
+        'do_eat': '宜食',
+        'drugs_of': '药物',
+        'has_symptom': '有症状',
+        'need_check': '需要检查',
+        'no_eat': '忌食',
+        'recommand_drug': '推荐药物',
+        'recommand_eat': '推荐饮食'
+    };
+          // 在页面加载完成后执行
+        window.onload = function() {
+            // 获取 URL 中的 search_term 参数值
+            var searchParams = new URLSearchParams(window.location.search);
+            var disease = searchParams.get('search_term');
+
+            // 将 disease 填入搜索框
+            document.getElementById('search_term').value = disease;
+
+            // 自动提交搜索表单
+            document.getElementById('searchForm').submit();
+        };
+
+        var links = JSON.parse('{{ links | tojson | safe }}') || [];
+
+        var nodes = {};
+
+        links.forEach(function (link) {
+            link.source = nodes[link.source] || (nodes[link.source] = { name: link.source });
+            link.target = nodes[link.target] || (nodes[link.target] = { name: link.target });
+        });
+
+        var width = 2000, height = 1000;
+
+        var color = d3.scale.category20();
+
+        var force = d3.layout.force()
+            .nodes(d3.values(nodes))
+            .links(links)
+            .size([width, height])
+            .linkDistance(180)
+            .charge(-1500)
+            .on("tick", tick)
+            .start();
+
+        var svg = d3.select("#graph");
+
+        var marker =
+            svg.append("marker")
+                .attr("id", "resolved")
+                .attr("markerUnits", "userSpaceOnUse")
+                .attr("viewBox", "0 -5 10 10")
+                .attr("refX", 32)
+                .attr("refY", -1)
+                .attr("markerWidth", 12)
+                .attr("markerHeight", 12)
+                .attr("orient", "auto")
+                .attr("stroke-width", 2)
+                .append("path")
+                .attr("d", "M0,-5L10,0L0,5")
+                .attr('fill', '#000000');
+
+        var edges = {}; // 存储关系边
+
+        // 创建关系边
+        var edges_line = svg.append('g')
+            .attr('class', 'edges')
+            .selectAll(".edgepath")
+            .data(force.links())
+            .enter()
+            .append("path")
+            .attr({
+                'd': function (d) { return 'M ' + d.source.x + ' ' + d.source.y + ' L ' + d.target.x + ' ' + d.target.y },
+                'class': 'edgepath',
+                'id': function (d, i) { return 'edgepath' + i; }
+            })
+            .style("stroke", function (d) {
+                var lineColor;
+                lineColor = "#B43232";
+                return lineColor;
+            })
+            .style("pointer-events", "none")
+            .style("stroke-width", 0.5)
+            .attr("marker-end", "url(#resolved)");
+
+        // 存储关系边的索引
+        edges_line.each(function (d, i) {
+            edges[d.source.name + "-" + d.target.name] = d;
+        });
+
+        // 创建关系文本
+        var edges_text = svg.append("g")
+            .attr('class', 'edge-text')
+            .selectAll(".edgelabel")
+            .data(force.links())
+            .enter()
+            .append("text")
+            .style("pointer-events", "none")
+            .attr({
+                'class': 'edgelabel',
+                'id': function (d, i) { return 'edgepath' + i; },
+                'dx': 80,
+                'dy': 0
+            });
+
+          edges_text.append('textPath')
+        .attr('xlink:href', function (d, i) { return '#edgepath' + i; })
+        .style("pointer-events", "none")
+        .text(function (d) {
+            // 使用 relationshipMap 中的替换文本，如果没有则返回空字符串
+            return relationshipMap[d.rela] || '';
+        });
+
+        var circle = svg.append("g").selectAll("circle")
+            .data(force.nodes())
+            .enter().append("circle")
+            .style("fill", function (d, i) {
+                return color(i);
+            })
+            .style('stroke', function (node) {
+                var color;
+                var link = links[node.index];
+                color = "#A254A2";
+                return color;
+            })
+            .attr("r", 28)
+            .on("click", function (node) {
+                edges_line.style("stroke-width", function (line) {
+                    console.log(line);
+                    if (line.source.name == node.name || line.target.name == node.name) {
+                        return 4;
+                    } else {
+                        return 0.5;
+                    }
+                });
+            })
+            .on("dblclick", function (node) {
+            navigateToNode(node.name); // 双击节点后跳转到节点文本的超链接
+    })
+            .on("mouseover", function () {
+        d3.select(this).attr("r", 32); // 鼠标悬停时增大节点半径
+    })
+            .on("mouseout", function () {
+        d3.select(this).attr("r", 28); // 鼠标移出时恢复节点半径
+    })
+            .call(force.drag);
+
+        circle.append("title")
+            .text("双击了解详情");
+        circle.on("dblclick", function (node) {
+            navigateToNode(node.name); // 双击节点后跳转到节点文本的超链接
+        });
+
+        function navigateToNode(nodeName) {
+            // 构建节点文本的超链接
+            var nodeLink = "https://baike.baidu.com/item/" + nodeName; // 替换为你的节点文本页面地址
+            // 跳转到节点文本页面
+            window.location.href = nodeLink;
+        }
+
+        var text = svg.append("g").selectAll("text")
+            .data(force.nodes())
+            .enter()
+            .append("text")
+            .attr("dy", ".35em")
+            .attr("text-anchor", "middle")
+            .style('fill', 'black')
+            .attr('x', function (d) {
+                var re_en = /[a-zA-Z]+/g;
+                if (d.name.match(re_en)) {
+                    d3.select(this).append('tspan')
+                        .attr('x', 0)
+                        .attr('y', 2)
+                        .text(function () { return d.name; });
+                }
+
+                else if (d.name.length <= 4) {
+                    d3.select(this).append('tspan')
+                        .attr('x', 0)
+                        .attr('y', 2)
+                        .text(function () { return d.name; });
+                } else {
+                    var top = d.name.substring(0, 4);
+                    var bot = d.name.substring(4, d.name.length);
+
+                    d3.select(this).text(function () { return ''; });
+
+                    d3.select(this).append('tspan')
+                        .attr('x', 0)
+                        .attr('y', -7)
+                        .text(function () { return top; });
+
+                    d3.select(this).append('tspan')
+                        .attr('x', 0)
+                        .attr('y', 10)
+                        .text(function () { return bot; });
+                }
+            });
+
+
+        function tick() {
+            circle.attr("transform", transform1);
+            text.attr("transform", transform2);
+
+            edges_line.attr('d', function (d) {
+                var path = 'M ' + d.source.x + ' ' + d.source.y + ' L ' + d.target.x + ' ' + d.target.y;
+                return path;
+            });
+
+            edges_text.attr('transform', function (d, i) {
+                if (d.target.x < d.source.x) {
+                    bbox = this.getBBox();
+                    rx = bbox.x + bbox.width / 2;
+                    ry = bbox.y + bbox.height / 2;
+                    return 'rotate(180 ' + rx + ' ' + ry + ')';
+                }
+                else {
+                    return 'rotate(0)';
+                }
+            });
+        }
+
+        function linkArc(d) {
+            return 'M ' + d.source.x + ' ' + d.source.y + ' L ' + d.target.x + ' ' + d.target.y
+        }
+
+        function transform1(d) {
+            // 限制节点的位置不超出边界
+            d.x = Math.max(28, Math.min(width - 28, d.x));
+            d.y = Math.max(28, Math.min(height - 28, d.y));
+            return "translate(" + d.x + "," + d.y + ")";
+        }
+
+        function transform2(d) {
+            // 限制节点的位置不超出边界
+            d.x = Math.max(28, Math.min(width - 28, d.x));
+            d.y = Math.max(28, Math.min(height - 28, d.y));
+            return "translate(" + (d.x) + "," + d.y + ")";
+        }
+
+        function toggleRelationship(relationship) {
+    // 确定符合给定关系的边
+    var relatedEdges = edges_line.filter(function(d) {
+        return d.rela === relationship;
+    });
+
+    // 提取与这些边相关的节点
+    var relatedNodes = new Set();
+    relatedEdges.each(function(edge) {
+        relatedNodes.add(edge.source.name);
+        relatedNodes.add(edge.target.name);
+    });
+
+    // 隐藏所有边、文本、节点和文本标签
+    edges_line.style("display", "none");
+    edges_text.style("display", "none");
+    circle.style("display", "none");
+    text.style("display", "none");
+
+    // 仅显示符合关系的边
+    relatedEdges.style("display", "inline");
+
+    // 显示与这些边相关的文本标签
+    edges_text.filter(function(d) {
+        return relatedEdges.filter(function(edge) {
+            return edge.source === d.source && edge.target === d.target;
+        }).size() > 0;
+    }).style("display", "inline");
+
+    // 显示与这些边相关的节点
+    circle.filter(function(d) {
+        return relatedNodes.has(d.name);
+    }).style("display", "inline");
+
+    text.filter(function(d) {
+        return relatedNodes.has(d.name);
+    }).style("display", "inline");
+    updateCounts(); // 更新节点和关系边数量
+}
+
+
+
+        function toggleAll() {
+    // 获取当前边的显示状态
+    var isHidden = edges_line.style("display") === "none";
+
+    // 设置新的显示状态：如果当前隐藏则显示，当前显示则隐藏
+    var newDisplayState = isHidden ? "inline" : "none";
+
+    // 切换边的显示状态
+    edges_line.style("display", newDisplayState);
+    edges_text.style("display", newDisplayState);
+
+    // 切换节点的显示状态
+    circle.style("display", newDisplayState);
+    text.style("display", newDisplayState);
+    updateCounts(); // 更新节点和关系边数量
+}
+
+        // 弹窗显示/隐藏函数
+        function showPopup(id) {
+            var popup = document.getElementById(id);
+            popup.style.display = "block";
+        }
+
+        function closePopup(id) {
+            var popup = document.getElementById(id);
+            popup.style.display = "none";
+        }
+
+          // 更新节点和边数量的函数
+        function updateCounts() {
+            var visibleNodes = circle.filter(function(d) {
+                return d3.select(this).style("display") !== "none";
+            }).size();
+
+            var visibleEdges = edges_line.filter(function(d) {
+                return d3.select(this).style("display") !== "none";
+            }).size();
+
+            d3.select("#nodeCount").text(visibleNodes);
+            d3.select("#edgeCount").text(visibleEdges);
+        }
+
+        // 在每次图谱更新时更新节点和关系边数量
+        function tick() {
+            circle.attr("transform", function(d) {
+                // 边界检查
+        d.x = Math.max(28, Math.min(width - 28, d.x));
+        d.y = Math.max(28, Math.min(height - 28, d.y));
+                return "translate(" + d.x + "," + d.y + ")";
+            });
+
+            text.attr("transform", function(d) {
+                return "translate(" + d.x + "," + d.y + ")";
+            });
+
+            edges_line.attr("d", function(d) {
+                return "M " + d.source.x + " " + d.source.y + " L " + d.target.x + " " + d.target.y;
+            });
+
+            edges_text.attr('transform', function (d, i) {
+                if (d.target.x < d.source.x) {
+                    bbox = this.getBBox();
+                    rx = bbox.x + bbox.width / 2;
+                    ry = bbox.y + bbox.height / 2;
+                    return 'rotate(180 ' + rx + ' ' + ry + ')';
+                }
+                else {
+                    return 'rotate(0)';
+                }
+            });
+
+            // 更新实时的节点和关系边数量
+            updateCounts();
+        }
+    </script>
+
+    <footer id="footer">
+        <p class="pad-lft">Copyright&#0169; 2024 黄致文 &nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;All Rights Reserved
+        </p>
+    </footer>
+</body>
+
+</html>
